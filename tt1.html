@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Heart Galaxy - Optimized</title>
+
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:linear-gradient(to bottom,#000000 0%,#050b1a 40%,#1a2a4a 70%,#4a1a4a 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    cursor:pointer;
+}
+canvas{display:block;}
+
+#intro-screen{
+    position:fixed;
+    inset:0;
+    background:black;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    z-index:999;
+}
+#intro-text{
+    color:white;
+    font-size:50px;
+    font-weight:bold;
+    letter-spacing:6px;
+    animation:blink 1s infinite;
+    text-align: center;
+}
+
+@keyframes blink{
+    0%{opacity:1;}
+    50%{opacity:0.2;}
+    100%{opacity:1;}
+}
+
+/* PHẦN CHỮ STATUS ĐÃ ĐƯỢC SỬA LẠI TO HƠN */
+#status{
+    position:absolute;
+    bottom:10%; /* Đẩy lên cao hơn một chút so với mép dưới */
+    left:50%;
+    transform:translateX(-50%);
+    color:#ff4d4d;
+    font-size:24px; /* Tăng kích thước chữ */
+    font-weight: bold;
+    letter-spacing:2px;
+    text-align: center;
+    width: 90%;
+    text-shadow:0 0 15px #ff2121, 0 0 5px #fff; /* Đổ bóng rực rỡ hơn */
+    pointer-events: none; /* Tránh việc chạm vào chữ làm cản trở click vào trái tim */
+    text-transform: uppercase;
+}
+
+/* TỐI ƯU CHO ĐIỆN THOẠI */
+@media (max-width: 768px) {
+    #status {
+        font-size: 26px; /* Chữ to hơn nữa trên điện thoại */
+        bottom: 15%;
+    }
+    #intro-text {
+        font-size: 40px;
+    }
+}
+
+#my-photo{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    max-width:85%;
+    max-height:70%;
+    border-radius:15px;
+    box-shadow:0 0 50px #ff2121;
+    opacity:0;
+    transition:0.8s;
+    z-index:5;
+    border:3px solid white;
+    pointer-events: none;
+}
+</style>
+</head>
+
+<body>
+
+<div id="intro-screen">
+    <div id="intro-text">CHẠM ĐỂ BẮT ĐẦU ❤️</div>
+</div>
+
+<div id="status">CHẠM VÀO TRÁI TIM NHÉ ❤️</div>
+<img id="my-photo" src="112.jpg">
+
+<audio id="bg-music" loop>
+    <source src="tt.mp3" type="audio/mpeg">
+</audio>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+
+<script>
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+/* SAO NỀN */
+const starGeo = new THREE.BufferGeometry();
+const starCount = 800;
+const starPos = new Float32Array(starCount * 3);
+for(let i=0;i<starCount;i++){
+    starPos[i*3]=(Math.random()-0.5)*120;
+    starPos[i*3+1]=(Math.random()-0.5)*120;
+    starPos[i*3+2]=(Math.random()-0.5)*120;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos,3));
+const stars = new THREE.Points(
+    starGeo,
+    new THREE.PointsMaterial({color:0xffffff,size:0.06,transparent:true,opacity:0.6})
+);
+scene.add(stars);
+
+/* MƯA SAO BĂNG */
+const meteors=[];
+function createMeteor(){
+    const geometry=new THREE.BufferGeometry();
+    geometry.setAttribute('position',
+        new THREE.BufferAttribute(new Float32Array([0,0,0,-1,1,0]),3)
+    );
+    const line=new THREE.Line(
+        geometry,
+        new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0.8})
+    );
+    function reset(){
+        line.position.set((Math.random()-0.5)*80, Math.random()*40+10, (Math.random()-0.5)*40);
+    }
+    reset();
+    return{ mesh:line, speed:Math.random()*0.15+0.05, reset:reset };
+}
+for(let i=0;i<40;i++){
+    const m=createMeteor();
+    meteors.push(m);
+    scene.add(m.mesh);
+}
+
+/* TRÁI TIM 3D */
+const particleCount=7000;
+const heartGeo=new THREE.BufferGeometry();
+const positions=[];
+const colors=[];
+let count=0;
+
+while(count<particleCount){
+    let x=(Math.random()-0.5)*3;
+    let y=(Math.random()-0.5)*3;
+    let z=(Math.random()-0.5)*3;
+    let f=Math.pow(x*x+(9/4)*y*y+z*z-1,3)-x*x*Math.pow(z,3)-(9/80)*y*y*Math.pow(z,3);
+    if(f<=0){
+        positions.push(x,z,y);
+        colors.push(1,Math.random()*0.15,Math.random()*0.2);
+        count++;
+    }
+}
+heartGeo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+heartGeo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+
+const heart=new THREE.Points(
+    heartGeo,
+    new THREE.PointsMaterial({size:0.025, vertexColors:true, transparent:true, opacity:0.9})
+);
+scene.add(heart);
+camera.position.z=4.5;
+
+/* ANIMATION */
+let time=0;
+let visible=false;
+const photo=document.getElementById("my-photo");
+const intro=document.getElementById("intro-screen");
+const music=document.getElementById("bg-music");
+
+function animate(){
+    requestAnimationFrame(animate);
+    time+=0.015;
+
+    if(!visible){
+        let scale=1+Math.sin(time*1.5)*0.06;
+        heart.scale.set(scale,scale,scale);
+        heart.rotation.y+=0.005;
+    }
+
+    meteors.forEach(m=>{
+        m.mesh.position.x+=m.speed;
+        m.mesh.position.y-=m.speed;
+        if(m.mesh.position.y<-20 || m.mesh.position.x>40) m.reset();
+    });
+
+    renderer.render(scene,camera);
+}
+animate();
+
+/* CLICK INTRO */
+intro.addEventListener("click",()=>{
+    intro.style.transition="0.8s";
+    intro.style.opacity="0";
+    setTimeout(()=>intro.style.display="none",800);
+    music.play().catch(()=>{});
+});
+
+/* CLICK ĐỂ HIỆN ẢNH - ĐÃ NỚI RỘNG VÙNG CHẠM CHO ĐIỆN THOẠI */
+window.addEventListener("click",(e)=>{
+    if(intro.style.display!=="none") return;
+
+    const mouseX=(e.clientX/window.innerWidth)*2-1;
+    const mouseY=-(e.clientY/window.innerHeight)*2+1;
+
+    // Tăng vùng nhận diện từ 0.3 lên 0.5 để dễ bấm hơn trên điện thoại
+    if(Math.abs(mouseX)<0.5 && Math.abs(mouseY)<0.5){
+        visible=!visible;
+        heart.visible=!visible;
+        photo.style.opacity=visible?1:0;
+    }
+});
+
+window.addEventListener("resize",()=>{
+    camera.aspect=window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth,window.innerHeight);
+});
+</script>
+
+</body>
+</html>
